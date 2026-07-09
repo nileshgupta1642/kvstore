@@ -6,12 +6,13 @@ from click.testing import CliRunner
 
 import kvstore.cli as cli_module
 from kvstore.store import KVStore
+from tests.fakes import FakeRedis
 
 
 class KVStoreCliTest(unittest.TestCase):
     def setUp(self):
         self.runner = CliRunner()
-        cli_module.store = KVStore()
+        cli_module.store = KVStore(client=FakeRedis())
 
     def test_set_and_get_value(self):
         set_result = self.runner.invoke(
@@ -49,7 +50,7 @@ class KVStoreCliTest(unittest.TestCase):
         result = self.runner.invoke(cli_module.cli, ["list_keys"])
 
         self.assertEqual(result.exit_code, 0)
-        self.assertEqual(result.output, "dict_keys(['alpha', 'beta'])\n")
+        self.assertEqual(result.output, "alpha\nbeta\n")
 
     def test_cli_module_can_be_run(self):
         result = subprocess.run(

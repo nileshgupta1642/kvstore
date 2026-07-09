@@ -1,13 +1,12 @@
-import io
 import unittest
-from contextlib import redirect_stdout
 
 from kvstore.store import KVStore
+from tests.fakes import FakeRedis
 
 
 class KVStoreTest(unittest.TestCase):
     def test_set_stores_and_overwrites_value(self):
-        store = KVStore()
+        store = KVStore(client=FakeRedis())
 
         self.assertTrue(store.set("theme", "dark"))
         self.assertEqual(store.get("theme"), "dark")
@@ -16,32 +15,37 @@ class KVStoreTest(unittest.TestCase):
         self.assertEqual(store.get("theme"), "light")
 
     def test_get_missing_key_returns_none(self):
-        store = KVStore()
+        store = KVStore(client=FakeRedis())
 
         self.assertIsNone(store.get("missing"))
 
     def test_delete_removes_existing_key_and_returns_value(self):
-        store = KVStore()
+        store = KVStore(client=FakeRedis())
         store.set("session", "abc123")
 
         self.assertEqual(store.delete("session"), "abc123")
         self.assertIsNone(store.get("session"))
 
     def test_delete_missing_key_returns_none(self):
-        store = KVStore()
+        store = KVStore(client=FakeRedis())
 
         self.assertIsNone(store.delete("missing"))
 
-    def test_list_keys_prints_current_keys(self):
-        store = KVStore()
+    def test_list_keys_returns_current_keys(self):
+        store = KVStore(client=FakeRedis())
         store.set("alpha", "1")
         store.set("beta", "2")
-        stdout = io.StringIO()
 
-        with redirect_stdout(stdout):
-            store.list_keys()
+        self.assertEqual(store.list_keys(), ["alpha", "beta"])
 
-        self.assertEqual(stdout.getvalue(), "dict_keys(['alpha', 'beta'])\n")
+    def test_list_keys_strips_namespace(self):
+        redis_client = FakeRedis()
+        redis_client.set("other:gamma", "3")
+        store = KVStore(client=redis_client, namespace="kvstore:")
+        store.set("alpha", "1")
+        store.set("beta", "2")
+
+        self.assertEqual(store.list_keys(), ["alpha", "beta"])
 
 
 if __name__ == "__main__":

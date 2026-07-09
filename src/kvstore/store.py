@@ -1,41 +1,58 @@
-'''
-Tiny persistent key-value store
-'''
-class KVStore:
-    def __init__(self):
-        self.kv_store = {}
+import os
 
+import redis
+
+
+DEFAULT_REDIS_HOST = os.environ.get("KVSTORE_REDIS_HOST", "localhost")
+DEFAULT_REDIS_PORT = int(os.environ.get("KVSTORE_REDIS_PORT", "6379"))
+DEFAULT_REDIS_DB = int(os.environ.get("KVSTORE_REDIS_DB", "0"))
+DEFAULT_REDIS_NAMESPACE = os.environ.get("KVSTORE_REDIS_NAMESPACE", "kvstore:")
+
+
+class KVStore:
+    def __init__(
+        self,
+        host: str = DEFAULT_REDIS_HOST,
+        port: int = DEFAULT_REDIS_PORT,
+        db: int = DEFAULT_REDIS_DB,
+        namespace: str = DEFAULT_REDIS_NAMESPACE,
+        client=None,
+    ):
+        self.redis = client or redis.Redis(
+            host=host,
+            port=port,
+            db=db,
+            decode_responses=True,
+        )
+        self.namespace = namespace
 
     def set(self, key: str, val: str) -> bool:
-        '''
-        Sets key,val in kv store
-        '''
-        self.kv_store[key] = val
-        return True
+        return bool(self.redis.set(self._redis_key(key), val))
 
     def get(self, key: str) -> str | None:
-        '''
-        Returns val for key in kv store
-        None if not found
-        '''
-        if key not in self.kv_store:
-            return None
-        return self.kv_store[key]
+        return self.redis.get(self._redis_key(key))
 
     def delete(self, key: str) -> str | None:
-        '''
-        Deletes key if it exists and returns it
-        Returns None if doesn't exist
-        '''
-        if key not in self.kv_store:
+        value = self.get(key)
+        if value is None:
             return None
-        ret = self.kv_store[key]
-        del self.kv_store[key]
-        return ret
 
+        self.redis.delete(self._redis_key(key))
+        return value
 
-    def list_keys(self):
-        '''
-        Prints list of keys in kv_store
-        '''
-        print(self.kv_store.keys())
+    def list_keys(self) -> list[str]:
+        return sorted(
+            self._public_key(redis_key)
+            for redis_key in self.redis.scan_iter(match=f"{self.namespace}*")
+        )
+
+    def _redis_key(self, key: str) -> str:
+        return f"{self.namespace}{key}"
+
+    def _public_key(self, redis_key: str | bytes) -> str:
+        if isinstance(redis_key, bytes):
+            redis_key = redis_key.decode()
+
+        if self.namespace and redis_key.startswith(self.namespace):
+            return redis_key[len(self.namespace):]
+        return redis_key

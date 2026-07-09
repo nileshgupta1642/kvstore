@@ -33,7 +33,8 @@ def delete(key: str) -> None:
 
 @cli.command(name="list_keys")
 def list_keys() -> None:
-    store.list_keys()
+    for key in store.list_keys():
+        click.echo(key)
 
 
 if __name__ == "__main__":
