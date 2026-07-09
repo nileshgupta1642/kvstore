@@ -1,6 +1,6 @@
 import click
 
-from .store import KVStore
+from .store import DEFAULT_TTL_SECONDS, KVStore
 
 
 store = KVStore()
@@ -14,8 +14,9 @@ def cli() -> None:
 @cli.command()
 @click.argument("key")
 @click.argument("value")
-def set(key: str, value: str) -> None:
-    store.set(key, value)
+@click.argument("ttl", required=False, type=int, default=DEFAULT_TTL_SECONDS)
+def set(key: str, value: str, ttl: int) -> None:
+    store.set(key, value, ttl)
     click.echo(True)
 
 

@@ -7,6 +7,7 @@ DEFAULT_REDIS_HOST = os.environ.get("KVSTORE_REDIS_HOST", "localhost")
 DEFAULT_REDIS_PORT = int(os.environ.get("KVSTORE_REDIS_PORT", "6379"))
 DEFAULT_REDIS_DB = int(os.environ.get("KVSTORE_REDIS_DB", "0"))
 DEFAULT_REDIS_NAMESPACE = os.environ.get("KVSTORE_REDIS_NAMESPACE", "kvstore:")
+DEFAULT_TTL_SECONDS = 60
 
 
 class KVStore:
@@ -26,8 +27,8 @@ class KVStore:
         )
         self.namespace = namespace
 
-    def set(self, key: str, val: str) -> bool:
-        return bool(self.redis.set(self._redis_key(key), val))
+    def set(self, key: str, val: str, ttl: int = DEFAULT_TTL_SECONDS) -> bool:
+        return bool(self.redis.set(self._redis_key(key), val, ex=ttl))
 
     def get(self, key: str) -> str | None:
         return self.redis.get(self._redis_key(key))
